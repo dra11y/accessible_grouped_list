@@ -167,11 +167,12 @@ class AccessibleListGroup<Group, Item> extends StatelessWidget {
                       final diff = minTop - itemTop;
                       _scrollController.jumpTo(_scrollController.offset - diff);
                     },
-                    child: PlatformListTile(
-                      contentPadding: const EdgeInsets.fromLTRB(16, 8, 0, 8),
-                      onTap: () => onTapItem?.call(items[index]),
-                      title: getItemWidget?.call(items[index]) ??
-                          (autoTruncateSemanticsLabel
+                    child: getItemWidget?.call(items[index]) ??
+                        PlatformListTile(
+                          contentPadding:
+                              const EdgeInsets.fromLTRB(16, 8, 0, 8),
+                          onTap: () => onTapItem?.call(items[index]),
+                          title: (autoTruncateSemanticsLabel
                               ? TruncatedSemanticsText(
                                   getItemTitle!(items[index]),
                                   maxLines: itemMaxLines,
@@ -182,8 +183,8 @@ class AccessibleListGroup<Group, Item> extends StatelessWidget {
                                   maxLines: itemMaxLines,
                                   style: itemTextStyle,
                                 )),
-                      trailing: const DynamicIcon(Icons.chevron_right),
-                    ),
+                          trailing: const DynamicIcon(Icons.chevron_right),
+                        ),
                   ),
                 ),
               ].whereType<Widget>().toList(),
