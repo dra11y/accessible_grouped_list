@@ -4,14 +4,15 @@ import 'package:flutter/material.dart';
 class AccessibleGroupedList extends StatelessWidget {
   const AccessibleGroupedList({
     super.key,
-    this.cacheExtent,
+    required this.cacheExtent,
     required this.slivers,
     required ScrollController scrollController,
     required GlobalKey scrollKey,
   })  : _scrollController = scrollController,
         _scrollKey = scrollKey;
 
-  final double? cacheExtent;
+  // The maximum distance between two headings in the list, in pixels.
+  final double cacheExtent;
   final List<Widget> slivers;
   final ScrollController _scrollController;
   final GlobalKey _scrollKey;

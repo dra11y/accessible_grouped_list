@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:sliver_tools/sliver_tools.dart';
 
@@ -13,10 +15,10 @@ class AccessibleListGroup<Group, Item> extends StatelessWidget {
   final List<Item> items;
   final bool autoTruncateSemanticsLabel;
   final Function(Item)? onTapItem;
-  final Widget Function(Group)? getGroupWidget;
-  final String Function(Group)? getGroupTitle;
-  final Widget Function(Item)? getItemWidget;
-  final String Function(Item)? getItemTitle;
+  final Widget Function(Group)? groupWidget;
+  final String Function(Group)? groupTitle;
+  final Widget Function(Item)? itemWidget;
+  final String Function(Item)? itemTitle;
   final int itemMaxLines;
   final TextStyle? groupTextStyle;
   final TextStyle? itemTextStyle;
@@ -33,10 +35,10 @@ class AccessibleListGroup<Group, Item> extends StatelessWidget {
     this.autoTruncateSemanticsLabel = true,
     this.groupTextStyle,
     this.itemTextStyle,
-    this.getGroupTitle,
-    this.getGroupWidget,
-    this.getItemTitle,
-    this.getItemWidget,
+    this.groupTitle,
+    this.groupWidget,
+    this.itemTitle,
+    this.itemWidget,
     this.itemMaxLines = 1,
     this.divider,
     this.onTapItem,
@@ -44,8 +46,8 @@ class AccessibleListGroup<Group, Item> extends StatelessWidget {
     required GlobalKey scrollKey,
   })  : _scrollController = scrollController,
         _scrollKey = scrollKey,
-        assert(getGroupTitle != null || getGroupWidget != null),
-        assert(getItemTitle != null || getItemWidget != null);
+        assert(groupTitle != null || groupWidget != null),
+        assert(itemTitle != null || itemWidget != null);
 
   @override
   Widget build(BuildContext context) => MultiSliver(
@@ -67,7 +69,6 @@ class AccessibleListGroup<Group, Item> extends StatelessWidget {
 
   SliverPinnedHeader buildHeader(BuildContext context) => SliverPinnedHeader(
         child: Semantics(
-          header: true,
           onDidGainAccessibilityFocus: () {
             if (groupIndex == 0) {
               _scrollController.jumpTo(0);
@@ -78,32 +79,44 @@ class AccessibleListGroup<Group, Item> extends StatelessWidget {
                 _scrollKey.currentContext?.findRenderObject() as RenderBox?;
             if (scrollBox == null) return;
             final scrollBoxTop = scrollBox.localToGlobal(Offset.zero).dy;
+            final scrollBoxBottom = scrollBoxTop + scrollBox.size.height;
 
             final headerBox =
                 _headerKey.currentContext?.findRenderObject() as RenderBox?;
             if (headerBox == null) return;
             final headerTop = headerBox.localToGlobal(Offset.zero).dy;
+            final headerBottom = headerTop + headerBox.size.height;
 
             final safeTop = scrollBoxTop +
                 (groupIndex == 0
                     ? 0
                     : headerBox.size.height + accessibilityScrollMargin);
-            if (headerTop >= safeTop) return;
 
-            final diff = safeTop - headerTop;
+            final safeBottom = scrollBoxBottom - headerBox.size.height - 2;
+            double diff;
+            if (headerTop < safeTop) {
+              diff = safeTop - headerTop;
+            } else if (headerBottom > safeBottom) {
+              diff = safeBottom - headerBottom;
+            } else {
+              return;
+            }
+
             _scrollController.jumpTo(_scrollController.offset - diff);
-            // _scrollController.jumpTo(0);
           },
-          child: Container(
+          child: Semantics(
             key: _headerKey,
-            color: Theme.of(context).colorScheme.primary,
-            padding: const EdgeInsets.fromLTRB(16, 8, 0, 8),
-            child: getGroupWidget?.call(group) ??
-                Text(
-                  getGroupTitle!(group),
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onPrimary,
-                  ).merge(groupTextStyle),
+            header: true,
+            child: groupWidget?.call(group) ??
+                Container(
+                  color: Theme.of(context).colorScheme.primary,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 0, 8),
+                  child: Text(
+                    groupTitle!(group),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ).merge(groupTextStyle),
+                  ),
                 ),
           ),
         ),
@@ -136,15 +149,7 @@ class AccessibleListGroup<Group, Item> extends StatelessWidget {
                       final itemHeight = itemBox.size.height;
                       final itemTop = itemBox.localToGlobal(Offset.zero).dy;
 
-                      final maxTop = scrollBoxBottom - itemHeight * 2;
-
-                      if (itemTop > maxTop) {
-                        final diff = maxTop - itemTop;
-
-                        _scrollController
-                            .jumpTo(_scrollController.offset - diff);
-                        return;
-                      }
+                      final maxTop = scrollBoxBottom - itemHeight - 2;
 
                       final headerBox = _headerKey.currentContext
                           ?.findRenderObject() as RenderBox?;
@@ -153,33 +158,45 @@ class AccessibleListGroup<Group, Item> extends StatelessWidget {
                       final headerHeight = headerBox.size.height;
                       final headerTop = headerBox.localToGlobal(Offset.zero).dy;
 
-                      if (headerTop > scrollBoxTop) return;
+                      // final headerBottom = headerTop + headerHeight;
 
-                      final headerBottom = headerTop + headerHeight;
+                      final minTop = scrollBoxTop + headerHeight + 2;
 
-                      final minTop =
-                          headerBottom + 1 + 2 * (index < 2 ? 0 : itemHeight);
-                      if (itemTop >= minTop) return;
+                      if (itemTop > maxTop) {
+                        final diff = max(minTop, maxTop) - itemTop;
 
-                      itemBox.markNeedsSemanticsUpdate();
-                      scrollBox.markNeedsSemanticsUpdate();
+                        _scrollController
+                            .jumpTo(_scrollController.offset - diff);
+                        return;
+                      }
+
+                      if (itemTop >= minTop) {
+                        return;
+                      }
+
+                      if (headerTop > scrollBoxTop) {
+                        return;
+                      }
+
+                      // itemBox.markNeedsSemanticsUpdate();
+                      // scrollBox.markNeedsSemanticsUpdate();
 
                       final diff = minTop - itemTop;
                       _scrollController.jumpTo(_scrollController.offset - diff);
                     },
-                    child: getItemWidget?.call(items[index]) ??
+                    child: itemWidget?.call(items[index]) ??
                         PlatformListTile(
                           contentPadding:
                               const EdgeInsets.fromLTRB(16, 8, 0, 8),
                           onTap: () => onTapItem?.call(items[index]),
                           title: (autoTruncateSemanticsLabel
                               ? TruncatedSemanticsText(
-                                  getItemTitle!(items[index]),
+                                  itemTitle!(items[index]),
                                   maxLines: itemMaxLines,
                                   style: itemTextStyle,
                                 )
                               : Text(
-                                  getItemTitle!(items[index]),
+                                  itemTitle!(items[index]),
                                   maxLines: itemMaxLines,
                                   style: itemTextStyle,
                                 )),

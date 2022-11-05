@@ -72,8 +72,8 @@ class MyHomePage extends ConsumerWidget {
                       groupIndex: index,
                       group: entry.key,
                       items: entry.value,
-                      getGroupTitle: (category) => category.titleize(),
-                      getItemTitle: (product) => product.title,
+                      groupTitle: (category) => category.titleize(),
+                      itemTitle: (product) => product.title,
                       scrollController: _scrollController,
                       scrollKey: _scrollKey,
                     ))
